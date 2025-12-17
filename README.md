@@ -57,14 +57,16 @@ mysql -uroot -p < src/main/resources/db/dianping.sql
 mvn spring-boot:run
 ```
 
-环境变量默认值（在 `application.yml` 中以 `${ENV:default}` 形式声明，未设置就用默认值）：
+环境变量（在 `application.yml` 中以 `${ENV:default}` 形式声明，未设置就用默认值）：
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `MYSQL_HOST/PORT/DB/USER/PASSWORD` | localhost/3306/dianping/root/ | MySQL 连接 |
+| `MYSQL_HOST/PORT/DB/USER/PASSWORD` | localhost/3306/dianping/root/（无默认） | MySQL 连接，密码需自行 export |
 | `REDIS_HOST/PORT` | localhost/6379 | Redis 连接 |
 | `RABBITMQ_HOST/PORT/USER/PASSWORD/VHOST` | localhost/5672/guest/guest// | RabbitMQ 连接 |
 | `DIANPING_UPLOAD_PATH` | ./uploads | 图片上传目录 |
+
+> 密码类信息均不提供默认值，启动前请通过环境变量注入（如 `export MYSQL_PASSWORD=xxx`），或创建 `application-local.yml` 覆盖。
 
 ## 目录结构
 

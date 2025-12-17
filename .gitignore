@@ -41,3 +41,10 @@ logs/
 
 ### 运行期生成 ###
 /uploads/
+
+### 本地敏感配置（本机密码等，勿提交） ###
+application-local.yml
+application-local.yaml
+application-dev.yml
+.env
+*.local
