@@ -17,9 +17,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.connection.BitFieldSubCommands;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -41,9 +39,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
-    @Qualifier("redisTemplate")
-    @Autowired
-    private RedisTemplate redisTemplate;
 
     @Override
     public Result sendCode(String phone, HttpSession session) {
@@ -69,9 +64,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return Result.fail("手机号格式错误");
         }
 
-        //检验验证码,从redis中获取
+        //检验验证码,从redis中获取（验证码由 stringRedisTemplate 写入，须用同一模板读取，避免序列化器不一致导致读不到）
         String code = loginForm.getCode();
-        Object cacheCode = redisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + phone);
+        Object cacheCode = stringRedisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + phone);
         if (cacheCode == null || !cacheCode.toString().equals(code)) {
             //不一致，返回错误
             return Result.fail("验证码错误");
@@ -104,7 +99,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //设置token有效期
         stringRedisTemplate.expire(tokenKey, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
-        return Result.ok();
+        //返回 token 给前端（前端 login.html 用 sessionStorage.setItem("token", data) 接收）
+        return Result.ok(token);
     }
 
     @Override
