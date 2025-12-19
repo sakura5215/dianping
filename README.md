@@ -49,13 +49,30 @@
 
 前置：MySQL 8 / Redis 6+ / RabbitMQ 3.13+。
 
+### 后端
+
 ```bash
 # 导入 schema
 mysql -uroot -p < src/main/resources/db/dianping.sql
 
-# 默认配置即可跑（用户名/密码等走环境变量占位），需调整时 export 对应变量即可
-mvn spring-boot:run
+# 设置 MySQL 密码后启动（密码无默认值，需自行 export）
+export MYSQL_PASSWORD=your_password
+mvn spring-boot:run          # 监听 8081
 ```
+
+### 前端
+
+前端为纯静态页（原生 HTML + Vue2 + Element UI + axios），用 nginx 托管并通过 `/api` 反向代理到后端：
+
+```bash
+# 1. 把 frontend/ 目录复制到 nginx 的 html/frontend 下
+# 2. 用 deploy/nginx.conf 启动 nginx（监听 8080，/api 反代到 8081）
+nginx -c /path/to/deploy/nginx.conf
+
+# 浏览器访问 http://localhost:8080/
+```
+
+前端 `js/common.js` 中 `axios.defaults.baseURL = "/api"`，由 nginx `location /api` 去掉前缀后转发到后端，与后端 `@RequestMapping` 无 `/api` 前缀对应。
 
 环境变量（在 `application.yml` 中以 `${ENV:default}` 形式声明，未设置就用默认值）：
 
@@ -78,4 +95,13 @@ src/main/java/com/dianping
 ├── mq/             # RabbitMQ 消费者
 ├── utils/          # RedisConstants / CacheClient（封装穿透/击穿方案）/ RedisIdWorker
 └── DianPingApplication.java
+
+frontend/           # 前端静态页（HTML + Vue2 + Element UI + axios）
+├── *.html          # 首页/登录/店铺详情/博客详情等页面
+├── js/             # common.js（axios 配置）/ vue.js / element.js
+├── css/            # 样式
+└── imgs/           # 图片资源
+
+deploy/
+└── nginx.conf      # 前端托管 + /api 反向代理配置
 ```
