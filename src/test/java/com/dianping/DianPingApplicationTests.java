@@ -31,7 +31,7 @@ class DianPingApplicationTests {
         for (Map.Entry<Long, List<Shop>> entry : map.entrySet()) {
             //3.1. 获取类型id
             Long typeId = entry.getKey();
-            String key = SHOP_GEO_KEY;
+            String key = SHOP_GEO_KEY + typeId;
             //3.2. 获取同类型的店铺列表
             List<Shop> value = entry.getValue();
             //3.3. 写入redis GEOADD key longitude latitude member

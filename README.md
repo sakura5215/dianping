@@ -43,7 +43,7 @@
 
 ## Redis GEO 附近店铺
 
-`queryShopByType` 用 Redis GEO 索引店铺坐标：`GEOSEARCH` 按距离排序 + 分页，避免 MySQL 算 haversine 全表扫。
+`queryShopByType` 用 Redis GEO 索引店铺坐标：`GEORADIUS` 按距离升序 + 分页（兼容 Redis 3.2+；如需升级为 `GEOSEARCH` 需 Redis 6.2+），避免 MySQL 算 haversine 全表扫。
 
 ## 本地启动
 

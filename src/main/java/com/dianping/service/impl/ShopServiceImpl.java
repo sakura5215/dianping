@@ -13,12 +13,13 @@ import com.dianping.utils.RedisData;
 import com.dianping.utils.SystemConstants;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.geo.Circle;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
 import org.springframework.data.geo.GeoResults;
+import org.springframework.data.geo.Point;
 import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,12 +91,12 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         int from = (current - 1) * SystemConstants.DEFAULT_PAGE_SIZE;
         int end = current * SystemConstants.DEFAULT_PAGE_SIZE;
         // 3. 查询redis、按照距离排序、分页。结果：shopId、distance
+        // 用 GEORADIUS（Redis 3.2+ 即支持）而非 GEOSEARCH（需 Redis 6.2+），兼容低版本 Redis
         String key = SHOP_GEO_KEY + typeId;
-        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo().search(
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo().radius(
                 key,
-                GeoReference.fromCoordinate(x, y),
-                new Distance(5000),
-                RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance().limit(end)
+                new Circle(new Point(x, y), new Distance(5000)),
+                RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeDistance().limit(end).sortAscending()
         );
         // 4. 解析出id
         if (results == null) {
@@ -115,13 +116,16 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             ids.add(Long.valueOf(shopIdStr)); //店铺id
             distanceMap.put(shopIdStr, result.getDistance()); //距离
         });
+        // GEO 命中为空时直接返回，避免 IN () 非法 SQL
+        if (ids.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
         // 5. 根据id查询shop
         String idStr = StrUtil.join(",", ids);
         List<Shop> shops = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list();
         for (Shop shop : shops) {
             shop.setDistance(distanceMap.get(shop.getId().toString()).getValue());
         }
-
-        return null;
+        return Result.ok(shops);
     }
 }
