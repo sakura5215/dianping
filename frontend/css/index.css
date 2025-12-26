@@ -15,6 +15,10 @@
 .search-input{
     width: 70%;
 }
+#app{
+    display: flex;
+    flex-direction: column;
+}
 .type-list {
     height: auto;
     display: flex;

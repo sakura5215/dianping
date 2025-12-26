@@ -115,7 +115,11 @@
             this.$message.error(err)
           })
       },
-      queryShops() {
+      queryShops(reset) {
+        if (reset) {
+          this.shops = [];
+          this.params.current = 1;
+        }
         axios.get("/shop/of/type", {
             params: this.params
           })
@@ -136,7 +140,7 @@
       },
       sortAndQuery(sortBy) {
         this.params.sortBy = sortBy;
-        this.queryShops();
+        this.queryShops(true);
       },
       goBack() {
         history.back();
@@ -152,7 +156,7 @@
           this.isReachBottom = true
           console.log("触底")
           this.params.current++
-          this.queryShops(this.params.current, 5);
+          this.queryShops(false);
         }else{
           this.isReachBottom = false
         }

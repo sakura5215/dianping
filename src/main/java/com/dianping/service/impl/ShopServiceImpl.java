@@ -79,12 +79,20 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     }
 
     @Override
-    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y) {
-        // 1. 判断是否需要根据坐标查询
-        if (x == null || y == null) {
-            // 不需要坐标查询，按照id和类型查询,按库查询
-            Page<Shop> page = query().eq("type_id", typeId)
-                    .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
+    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y, String sortBy) {
+        // 1. 无坐标，或指定了人气/评分排序（非距离排序）：直接按库查询并排序
+        if (x == null || y == null || (sortBy != null && !sortBy.isEmpty())) {
+            Page<Shop> page;
+            if ("comments".equals(sortBy)) {
+                page = query().eq("type_id", typeId).orderByDesc("comments")
+                        .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
+            } else if ("score".equals(sortBy)) {
+                page = query().eq("type_id", typeId).orderByDesc("score")
+                        .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
+            } else {
+                page = query().eq("type_id", typeId)
+                        .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
+            }
             return Result.ok(page.getRecords());
         }
         // 2. 计算分页参数

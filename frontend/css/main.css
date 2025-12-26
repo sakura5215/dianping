@@ -11,10 +11,6 @@ body{
 html,body,#app{
     height: 100%;
 }
-#app{
-    display: flex;
-    flex-direction: column;
-}
 
 .el-tabs__item {
     font-size: 14px;
