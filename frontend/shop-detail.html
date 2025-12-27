@@ -81,7 +81,7 @@
           <div class="seckill-stock">剩余 <span>{{v.stock}}</span> 张</div>
           <div class="seckill-time">{{formatTime(v)}}</div>
         </div>
-        <div class="voucher-btn" v-else>抢购</div>
+        <div class="voucher-btn" v-else @click="buyNormal(v)">抢购</div>
       </div>
     </div>
   </div>
@@ -226,6 +226,9 @@
           this.$message.success("抢购成功，订单id：" + data)
         })
         .catch(this.$message.error)
+      },
+      buyNormal(v){
+        this.$message.info("普通券购买功能开发中，可体验秒杀券抢购")
       }
     }
   })
