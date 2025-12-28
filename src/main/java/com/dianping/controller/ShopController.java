@@ -87,4 +87,18 @@ public class ShopController {
         // 返回数据
         return Result.ok(page.getRecords());
     }
+
+    /**
+     * 附近店铺（地图页用）：返回以坐标为中心 5km 内的所有店铺，按距离升序
+     * @param x 经度
+     * @param y 纬度
+     * @return 店铺列表（含 distance）
+     */
+    @GetMapping("/of/geo")
+    public Result queryShopByGeo(
+            @RequestParam(value = "x", required = false) Double x,
+            @RequestParam(value = "y", required = false) Double y
+    ) {
+        return shopService.queryShopByGeo(x, y);
+    }
 }

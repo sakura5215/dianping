@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>附近</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link rel="stylesheet" href="./css/main.css">
+  <style>
+    .header{
+      width: 100%;
+      height: 7%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: #fff;
+      border-bottom: 2px solid #ff6633;
+      position: relative;
+    }
+    .header-back-btn{
+      width: 10%;
+      color: #ff6633;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      cursor: pointer;
+    }
+    .header-title{
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .map-view{
+      height: 40%;
+      background-color: #eaf3ea;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .shop-dot{
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+    }
+    .shop-dot .dot{
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #ff6633;
+      box-shadow: 0 0 0 3px rgba(255, 102, 51, 0.25);
+      margin: 0 auto;
+    }
+    .shop-dot .dot-name{
+      display: block;
+      font-size: 10px;
+      color: #333;
+      background: rgba(255,255,255,0.85);
+      padding: 1px 4px;
+      border-radius: 2px;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+    .me-dot{
+      position: absolute;
+      transform: translate(-50%, -50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: #3d7eff;
+      box-shadow: 0 0 0 4px rgba(61, 126, 255, 0.3);
+      color: #fff;
+      font-size: 9px;
+      text-align: center;
+      line-height: 16px;
+    }
+    .shop-list{
+      height: 45%;
+      overflow-y: auto;
+      background-color: #f1f1f1;
+    }
+    .shop-box{
+      display: flex;
+      align-items: center;
+      padding: 12px 15px;
+      margin: 6px 8px;
+      background-color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .shop-name{
+      font-size: 15px;
+      font-weight: bold;
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .shop-dist{
+      font-size: 13px;
+      color: #ff6633;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .shop-addr{
+      font-size: 11px;
+      color: #999;
+    }
+    .shop-info{
+      flex: 1;
+      min-width: 0;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-back-btn" @click="goBack">&#8592;</div>
+    <div class="header-title">附近</div>
+  </div>
+  <div class="map-view">
+    <div class="shop-dot" v-for="s in shops" :key="s.id"
+         :style="{left: dotLeft(s)+'%', top: dotTop(s)+'%'}" @click="toDetail(s.id)">
+      <div class="dot"></div>
+      <span class="dot-name">{{s.name}}</span>
+    </div>
+    <div class="me-dot" :style="{left: meLeft+'%', top: meTop+'%'}">我</div>
+  </div>
+  <div class="shop-list">
+    <div class="shop-box" v-for="s in shops" :key="s.id" @click="toDetail(s.id)">
+      <div class="shop-info">
+        <div class="shop-name">{{s.name}}</div>
+        <div class="shop-addr">{{s.address}}</div>
+      </div>
+      <div class="shop-dist">{{formatDist(s.distance)}}</div>
+    </div>
+    <div v-if="!shops.length" style="text-align:center;color:#999;padding:30px 0">附近暂无店铺</div>
+  </div>
+</div>
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  // 当前位置（杭州拱墅区，与店铺列表页一致）
+  const MY_X = 120.149993, MY_Y = 30.334229;
+  const app = new Vue({
+    el: "#app",
+    data: {
+      shops: []
+    },
+    computed: {
+      bounds() {
+        if (!this.shops.length) return null;
+        let xs = this.shops.map(s => s.x), ys = this.shops.map(s => s.y);
+        return {
+          minX: Math.min(...xs), maxX: Math.max(...xs),
+          minY: Math.min(...ys), maxY: Math.max(...ys)
+        };
+      },
+      // 以 bounds 为基准的坐标百分比（经度→left，纬度→top）
+      meLeft() {
+        let b = this.bounds;
+        if (!b || b.maxX === b.minX) return 50;
+        return (MY_X - b.minX) / (b.maxX - b.minX) * 90 + 5;
+      },
+      meTop() {
+        let b = this.bounds;
+        if (!b || b.maxY === b.minY) return 50;
+        return (b.maxY - MY_Y) / (b.maxY - b.minY) * 90 + 5;
+      }
+    },
+    created() {
+      this.queryShops();
+    },
+    methods: {
+      queryShops() {
+        axios.get("/shop/of/geo", { params: { x: MY_X, y: MY_Y } })
+          .then(({data}) => {
+            this.shops = data || [];
+          })
+          .catch(err => this.$message.error(err));
+      },
+      dotLeft(s) {
+        let b = this.bounds;
+        if (!b || b.maxX === b.minX) return 50;
+        return (s.x - b.minX) / (b.maxX - b.minX) * 90 + 5;
+      },
+      dotTop(s) {
+        let b = this.bounds;
+        if (!b || b.maxY === b.minY) return 50;
+        return (b.maxY - s.y) / (b.maxY - b.minY) * 90 + 5;
+      },
+      formatDist(d) {
+        if (!d) return '';
+        return d < 1000 ? d.toFixed(0) + 'm' : (d / 1000).toFixed(1) + 'km';
+      },
+      toDetail(id) {
+        location.href = "/shop-detail.html?id=" + id;
+      },
+      goBack() {
+        history.back();
+      }
+    }
+  })
+</script>
+</body>
+</html>

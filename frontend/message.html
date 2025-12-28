@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>消息</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link rel="stylesheet" href="./css/main.css">
+  <style>
+    .header{
+      width: 100%;
+      height: 7%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: #fff;
+      border-bottom: 2px solid #ff6633;
+      position: relative;
+    }
+    .header-back-btn{
+      width: 10%;
+      color: #ff6633;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      cursor: pointer;
+    }
+    .header-title{
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .feed-list{
+      height: 85%;
+      overflow-y: auto;
+      background-color: #f1f1f1;
+    }
+    .feed-box{
+      background-color: #fff;
+      margin: 8px;
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .feed-head{
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .feed-head img{
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .feed-name{
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+    }
+    .feed-title{
+      font-size: 14px;
+      color: #111;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .feed-img{
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .feed-foot{
+      display: flex;
+      align-items: center;
+      color: #999;
+      font-size: 12px;
+    }
+    .feed-like{
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      color: #82848a;
+    }
+    .feed-like svg{
+      margin-right: 3px;
+    }
+    .empty{
+      text-align: center;
+      color: #999;
+      padding: 50px 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-back-btn" @click="goBack">&#8592;</div>
+    <div class="header-title">消息</div>
+  </div>
+  <div class="feed-list" @scroll="onScroll">
+    <div class="feed-box" v-for="b in blogs" :key="b.id" @click="toBlog(b)">
+      <div class="feed-head">
+        <img :src="b.icon || '/imgs/icons/default-icon.png'" alt="">
+        <span class="feed-name">{{b.name}}</span>
+      </div>
+      <div class="feed-title">{{b.title}}</div>
+      <img v-if="b.img" class="feed-img" :src="b.img" alt="" style="width:100%">
+      <div class="feed-foot">
+        <span>{{formatTime(b.createTime)}}</span>
+        <div class="feed-like">
+          <svg t="1646634642977" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="14" height="14">
+            <path d="M160 944c0 8.8-7.2 16-16 16h-32c-26.5 0-48-21.5-48-48V528c0-26.5 21.5-48 48-48h32c8.8 0 16 7.2 16 16v448zM96 416c-53 0-96 43-96 96v416c0 53 43 96 96 96h96c17.7 0 32-14.3 32-32V448c0-17.7-14.3-32-32-32H96zM505.6 64c16.2 0 26.4 8.7 31 13.9 4.6 5.2 12.1 16.3 10.3 32.4l-23.5 203.4c-4.9 42.2 8.6 84.6 36.8 116.4 28.3 31.7 68.9 49.9 111.4 49.9h271.2c6.6 0 10.8 3.3 13.2 6.1s5 7.5 4 14l-48 303.4c-6.9 43.6-29.1 83.4-62.7 112C815.8 944.2 773 960 728.9 960h-317c-33.1 0-59.9-26.8-59.9-59.9v-455c0-6.1 1.7-12 5-17.1 69.5-109 106.4-234.2 107-364h41.6z m0-64h-44.9C427.2 0 400 27.2 400 60.7c0 127.1-39.1 251.2-112 355.3v484.1c0 68.4 55.5 123.9 123.9 123.9h317c122.7 0 227.2-89.3 246.3-210.5l47.9-303.4c7.8-49.4-30.4-94.1-80.4-94.1H671.6c-50.9 0-90.5-44.4-84.6-95l23.5-203.4C617.7 55 568.7 0 505.6 0z" :fill="b.isLike ? '#ff6633' : '#82848a'"></path>
+          </svg>
+          {{b.liked || 0}}
+        </div>
+      </div>
+    </div>
+    <div v-if="!blogs.length && loaded" class="empty">暂无关注动态，去关注一些探店达人吧</div>
+    <div v-else-if="noMore" class="empty" style="padding:20px 0">没有更多了</div>
+  </div>
+</div>
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: "#app",
+    data: {
+      blogs: [],
+      lastId: Number.MAX_SAFE_INTEGER,
+      offset: 0,
+      noMore: false,
+      loaded: false,
+      isReachBottom: false
+    },
+    created() {
+      this.queryFeed();
+    },
+    methods: {
+      queryFeed() {
+        if (this.noMore) return;
+        axios.get("/blog/of/follow", {
+          params: { lastId: this.lastId, offset: this.offset }
+        })
+        .then(({data}) => {
+          this.loaded = true;
+          if (!data || !data.list || data.list.length === 0) {
+            this.noMore = true;
+            return;
+          }
+          data.list.forEach(b => b.img = b.images ? b.images.split(",")[0] : '');
+          this.blogs = this.blogs.concat(data.list);
+          this.lastId = data.minTime;
+          this.offset = data.offset;
+          if (data.list.length < 2) {
+            this.noMore = true;
+          }
+        })
+        .catch(err => this.$message.error(err));
+      },
+      onScroll(e) {
+        let scrollTop = e.target.scrollTop;
+        let offsetHeight = e.target.offsetHeight;
+        let scrollHeight = e.target.scrollHeight;
+        if (scrollTop + offsetHeight + 1 > scrollHeight && !this.isReachBottom && !this.noMore) {
+          this.isReachBottom = true;
+          this.queryFeed();
+        } else {
+          this.isReachBottom = false;
+        }
+      },
+      formatTime(t) {
+        if (!t) return '';
+        return t.replace('T', ' ').substring(0, 16);
+      },
+      toBlog(b) {
+        location.href = "/blog-detail.html?id=" + b.id;
+      },
+      goBack() {
+        history.back();
+      }
+    }
+  })
+</script>
+</body>
+</html>

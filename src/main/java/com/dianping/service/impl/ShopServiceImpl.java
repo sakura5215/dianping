@@ -136,4 +136,40 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         }
         return Result.ok(shops);
     }
+
+    @Override
+    public Result queryShopByGeo(Double x, Double y) {
+        if (x == null || y == null) {
+            return Result.ok(Collections.emptyList());
+        }
+        // 查全量 GEO key，返回 5km 内所有店铺，按距离升序，最多 20 家
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo().radius(
+                SHOP_GEO_ALL_KEY,
+                new Circle(new Point(x, y), new Distance(5000)),
+                RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeDistance().limit(20).sortAscending()
+        );
+        if (results == null || results.getContent().isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+        List<Long> ids = new ArrayList<>();
+        Map<String, Distance> distanceMap = new HashMap<>();
+        for (GeoResult<RedisGeoCommands.GeoLocation<String>> r : results.getContent()) {
+            String shopIdStr = r.getContent().getName();
+            ids.add(Long.valueOf(shopIdStr));
+            distanceMap.put(shopIdStr, r.getDistance());
+        }
+        // 按 id 查店铺详情，并按距离重排（DB 返回顺序与 ids 不一致）
+        List<Shop> shops = query().in("id", ids).list();
+        shops.forEach(s -> {
+            Distance d = distanceMap.get(s.getId().toString());
+            if (d != null) {
+                s.setDistance(d.getValue());
+            }
+        });
+        shops.sort(Comparator.comparingDouble(s -> {
+            Distance d = distanceMap.get(s.getId().toString());
+            return d == null ? Double.MAX_VALUE : d.getValue();
+        }));
+        return Result.ok(shops);
+    }
 }

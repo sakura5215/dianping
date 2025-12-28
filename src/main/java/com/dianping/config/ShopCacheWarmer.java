@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 
 import static com.dianping.utils.RedisConstants.CACHE_SHOP_KEY;
 import static com.dianping.utils.RedisConstants.CACHE_SHOP_TTL;
+import static com.dianping.utils.RedisConstants.SHOP_GEO_ALL_KEY;
 import static com.dianping.utils.RedisConstants.SHOP_GEO_KEY;
 
 /**
@@ -64,7 +65,13 @@ public class ShopCacheWarmer implements ApplicationRunner {
                                 .collect(Collectors.toList());
                         stringRedisTemplate.opsForGeo().add(SHOP_GEO_KEY + typeId, locations);
                     });
-            log.info("店铺缓存预热完成，共 {} 家店铺写入 Redis（逻辑过期 + GEO）", shops.size());
+            // 3. 全量 GEO 预热：地图页跨类型查附近店铺
+            List<RedisGeoCommands.GeoLocation<String>> allLocations = shops.stream()
+                    .filter(s -> s.getX() != null && s.getY() != null)
+                    .map(s -> new RedisGeoCommands.GeoLocation<>(s.getId().toString(), new Point(s.getX(), s.getY())))
+                    .collect(Collectors.toList());
+            stringRedisTemplate.opsForGeo().add(SHOP_GEO_ALL_KEY, allLocations);
+            log.info("店铺缓存预热完成，共 {} 家店铺写入 Redis（逻辑过期 + 分类 GEO + 全量 GEO）", shops.size());
         } catch (Exception e) {
             log.warn("店铺缓存预热失败（不影响启动，未命中请求将走 DB 兜底），原因：{}", e.getMessage());
         }

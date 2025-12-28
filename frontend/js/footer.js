@@ -35,8 +35,10 @@ Vue.component("footBar", {
         location.href = "/info.html"
       } else if (i === 1){
         location.href = "/"
-      } else {
-        this.$message.info("该功能开发中")
+      } else if (i === 2) {
+        location.href = "/map.html"
+      } else if (i === 3) {
+        location.href = "/message.html"
       }
     }
   }
