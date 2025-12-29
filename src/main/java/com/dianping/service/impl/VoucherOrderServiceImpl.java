@@ -2,10 +2,12 @@ package com.dianping.service.impl;
 
 import com.dianping.config.MqConfig;
 import com.dianping.dto.Result;
+import com.dianping.entity.Voucher;
 import com.dianping.entity.VoucherOrder;
 import com.dianping.mapper.VoucherOrderMapper;
 import com.dianping.service.ISeckillVoucherService;
 import com.dianping.service.IVoucherOrderService;
+import com.dianping.service.IVoucherService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dianping.utils.RedisIdWorker;
 import com.dianping.utils.UserHolder;
@@ -18,6 +20,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 
 /**
@@ -34,6 +37,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private ISeckillVoucherService seckillVoucherService;
 
     @Resource
+    private IVoucherService voucherService;
+
+    @Resource
     private RedisIdWorker redisIdWorker;
 
     @Resource
@@ -47,6 +53,32 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         SECKILL_SCRIPT = new DefaultRedisScript<>();
         SECKILL_SCRIPT.setLocation(new ClassPathResource("seckill.lua"));
         SECKILL_SCRIPT.setResultType(Long.class);
+    }
+
+    @Override
+    @Transactional
+    public Result buyVoucher(Long voucherId) {
+        Long userId = UserHolder.getUser().getId();
+        // 1. 查询优惠券
+        Voucher voucher = voucherService.getById(voucherId);
+        if (voucher == null || voucher.getStatus() != 1) {
+            return Result.fail("优惠券不存在或已下架");
+        }
+        if (voucher.getType() != null && voucher.getType() == 1) {
+            // 秒杀券走专门的抢购入口，库存由 Redis Lua 维护
+            return Result.fail("秒杀券请通过限时抢购入口下单");
+        }
+        // 2. 生成订单。普通券表无库存列（不限量），同步落库即可，无需 MQ
+        VoucherOrder order = new VoucherOrder()
+                .setId(redisIdWorker.nextId("order"))
+                .setUserId(userId)
+                .setVoucherId(voucherId)
+                .setPayType(1)
+                .setStatus(1)
+                .setCreateTime(LocalDateTime.now())
+                .setUpdateTime(LocalDateTime.now());
+        save(order);
+        return Result.ok(order.getId());
     }
 
     @Override

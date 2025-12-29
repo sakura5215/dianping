@@ -20,4 +20,12 @@ public class VoucherOrderController {
     public Result seckillVoucher(@PathVariable("id") Long voucherId) {
         return voucherOrderService.seckillVoucher(voucherId);
     }
+
+    /**
+     * 购买普通优惠券（非秒杀）
+     */
+    @PostMapping("buy/{id}")
+    public Result buyVoucher(@PathVariable("id") Long voucherId) {
+        return voucherOrderService.buyVoucher(voucherId);
+    }
 }

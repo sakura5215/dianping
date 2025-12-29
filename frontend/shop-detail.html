@@ -228,7 +228,11 @@
         .catch(this.$message.error)
       },
       buyNormal(v){
-        this.$message.info("普通券购买功能开发中，可体验秒杀券抢购")
+        axios.post("/voucher-order/buy/" + v.id)
+          .then(({data}) => {
+            this.$message.success("购买成功，订单号：" + data);
+          })
+          .catch(err => this.$message.error(err))
       }
     }
   })

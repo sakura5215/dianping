@@ -7,6 +7,7 @@ import com.dianping.dto.UserDTO;
 import com.dianping.entity.Follow;
 import com.dianping.mapper.FollowMapper;
 import com.dianping.service.IFollowService;
+import com.dianping.service.IUserService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dianping.utils.UserHolder;
 import jakarta.annotation.Resource;
@@ -15,7 +16,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -23,6 +26,9 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private IUserService userService;
 
     /**
      * 关注或取消关注
@@ -86,6 +92,44 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         List<Long> ids = intersect.stream().map(Long::valueOf).toList();
         // 根据id查询用户
         List<UserDTO> users = listByIds(ids).stream()
+                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+                .toList();
+        return Result.ok(users);
+    }
+
+    @Override
+    public Result followStat(Long userId) {
+        Long followCount = query().eq("user_id", userId).count();
+        Long fanCount = query().eq("follow_user_id", userId).count();
+        Map<String, Object> stat = new HashMap<>(4);
+        stat.put("followCount", followCount);
+        stat.put("fanCount", fanCount);
+        return Result.ok(stat);
+    }
+
+    @Override
+    public Result followList(Long userId) {
+        // 我关注的人：tb_follow 里 user_id = 我的记录的 follow_user_id
+        List<Long> ids = query().eq("user_id", userId).list().stream()
+                .map(Follow::getFollowUserId).toList();
+        if (ids.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+        List<UserDTO> users = userService.listByIds(ids).stream()
+                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+                .toList();
+        return Result.ok(users);
+    }
+
+    @Override
+    public Result fanList(Long userId) {
+        // 我的粉丝：tb_follow 里 follow_user_id = 我的记录的 user_id
+        List<Long> ids = query().eq("follow_user_id", userId).list().stream()
+                .map(Follow::getUserId).toList();
+        if (ids.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+        List<UserDTO> users = userService.listByIds(ids).stream()
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .toList();
         return Result.ok(users);

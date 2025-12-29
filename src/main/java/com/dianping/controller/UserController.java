@@ -2,6 +2,7 @@ package com.dianping.controller;
 
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.db.Page;
 import com.dianping.dto.LoginFormDTO;
 import com.dianping.dto.Result;
@@ -12,11 +13,14 @@ import com.dianping.entity.UserInfo;
 import com.dianping.service.IBlogService;
 import com.dianping.service.IUserInfoService;
 import com.dianping.service.IUserService;
+import com.dianping.utils.RedisConstants;
 import com.dianping.utils.SystemConstants;
 import com.dianping.utils.UserHolder;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -31,6 +35,9 @@ public class UserController {
 
     @Resource
     private IUserInfoService userInfoService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 发送手机验证码
@@ -52,13 +59,16 @@ public class UserController {
     }
 
     /**
-     * 登出功能
+     * 登出功能：删除 Redis 中的登录态
      * @return 无
      */
     @PostMapping("/logout")
-    public Result logout(){
-        // TODO 实现登出功能
-        return Result.fail("功能未完成");
+    public Result logout(HttpServletRequest request){
+        String token = request.getHeader("authorization");
+        if (StrUtil.isNotBlank(token)) {
+            stringRedisTemplate.delete(RedisConstants.LOGIN_USER_KEY + token);
+        }
+        return Result.ok();
     }
 
     @GetMapping("/me")
