@@ -75,10 +75,14 @@ export REDIS_SENTINEL_MASTER=mymaster
 
 前置：MySQL 8 / Redis 6+ / RabbitMQ 3.13+。
 
+> **两个易踩点**：
+> 1. **登录验证码不真发短信**，而是 `log.debug` 打到后端控制台日志，登录时到启动日志里找「发送验证码成功，验证码：xxxxx」。
+> 2. **秒杀券种子数据已内置**：`dianping.sql` 里含普通券（id=1，type=0）和秒杀券（id=2，type=1，stock=100），店铺详情页可直接演示「普通券购买 + 秒杀抢购」。
+
 ### 后端
 
 ```bash
-# 导入 schema
+# 导入 schema（MySQL 8 严格模式下可直接导入，无 0000-00-00 兼容问题）
 mysql -uroot -p < src/main/resources/db/dianping.sql
 
 # 设置 MySQL 密码后启动（密码无默认值，需自行 export）
