@@ -80,8 +80,8 @@ CREATE TABLE `tb_seckill_voucher`  (
   `voucher_id` bigint(20) UNSIGNED NOT NULL COMMENT '关联的优惠券的id',
   `stock` int(8) NOT NULL COMMENT '库存',
   `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `begin_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' COMMENT '生效时间',
-  `end_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' COMMENT '失效时间',
+  `begin_time` timestamp NULL DEFAULT NULL COMMENT '生效时间',
+  `end_time` timestamp NULL DEFAULT NULL COMMENT '失效时间',
   `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`voucher_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '秒杀优惠券表，与优惠券是一对一关系' ROW_FORMAT = Compact;
@@ -89,6 +89,7 @@ CREATE TABLE `tb_seckill_voucher`  (
 -- ----------------------------
 -- Records of tb_seckill_voucher
 -- ----------------------------
+INSERT INTO `tb_seckill_voucher` VALUES (2, 100, '2022-01-04 09:42:39', '2022-01-04 09:00:00', '2030-12-31 23:59:59', '2022-01-04 09:43:31');
 
 -- ----------------------------
 -- Table structure for tb_shop
@@ -1249,6 +1250,7 @@ CREATE TABLE `tb_voucher`  (
 -- Records of tb_voucher
 -- ----------------------------
 INSERT INTO `tb_voucher` VALUES (1, 1, '50元代金券', '周一至周日均可使用', '全场通用\\n无需预约\\n可无限叠加\\不兑现、不找零\\n仅限堂食', 4750, 5000, 0, 1, '2022-01-04 09:42:39', '2022-01-04 09:43:31');
+INSERT INTO `tb_voucher` VALUES (2, 1, '100元代金券', '限时秒杀', '全场通用\\n限量抢购\\n每人限购1张', 8000, 10000, 1, 1, '2022-01-04 09:42:39', '2022-01-04 09:43:31');
 
 -- ----------------------------
 -- Table structure for tb_voucher_order
