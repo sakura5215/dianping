@@ -9,9 +9,10 @@
 | Web | Spring Boot 3.2.10 / JDK 17 |
 | 持久 | MyBatis-Plus 3.5.9 / MySQL 8 |
 | 缓存 L1 | Caffeine（进程内本地缓存） |
-| 缓存 L2 | Spring Data Redis 3.2 / Lettuce |
+| 缓存 L2 | Spring Data Redis 3.2 / Lettuce（单机 / 主从+哨兵） |
 | 消息队列 | spring-boot-starter-amqp / RabbitMQ 3.13 |
 | 分布式锁 | Redisson 3.22 |
+| 一致性 | Canal 订阅 binlog（异步失效缓存） |
 | 工具 | Hutool 5.8 / Lombok |
 
 ## 缓存设计
@@ -25,6 +26,31 @@
    - 已命中已过期 → 抢锁后异步线程重建数据库回写，未抢锁线程先返回旧值，**防击穿**
 3. **DB**：兜底来源。
 4. 一致性：写路径 `update` 走 Cache-Aside，先 `updateById` 再删 Redis + Caffeine 双级；L2 逻辑过期异步重建期间 L1 的 10min TTL 兜底，最终一致。
+
+### 一致性演进：Canal 订阅 binlog
+
+除应用主动双删外，引入 **Canal 订阅 MySQL binlog** 被动失效缓存（`mq/CanalCacheSyncListener`）：
+
+- Canal 伪装成 MySQL 从库拉 binlog，把 `tb_shop` 的 UPDATE/DELETE 事件推给应用。
+- 应用收到变更后，失效 `cache:shop:{id}`（Redis L2）+ `shopLocalCache.invalidate(id)`（Caffeine L1）。
+- 好处：不依赖业务代码记得删，别的服务/脚本直接改库也能同步失效，做到最终一致。
+
+详见 `deploy/高可用与一致性演进方案.md`。
+
+## Redis 高可用（主从 + 哨兵）
+
+单机模式为默认；设置哨兵环境变量后，Lettuce + Redisson 均切到哨兵模式，主从切换对应用透明：
+
+```bash
+# 单机（默认）
+export REDIS_HOST=localhost REDIS_PORT=6379
+
+# 主从 + 哨兵
+export REDIS_SENTINEL_NODES=localhost:26379,localhost:26380,localhost:26381
+export REDIS_SENTINEL_MASTER=mymaster
+```
+
+本地一键起主从+哨兵：`bash deploy/redis/start-all.sh`（1 主 2 从 3 哨兵）。
 
 ## 异步秒杀
 
@@ -79,9 +105,12 @@ nginx -c /path/to/deploy/nginx.conf
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `MYSQL_HOST/PORT/DB/USER/PASSWORD` | localhost/3306/dianping/root/（无默认） | MySQL 连接，密码需自行 export |
-| `REDIS_HOST/PORT` | localhost/6379 | Redis 连接 |
+| `REDIS_HOST/PORT` | localhost/6379 | Redis 连接（单机模式） |
+| `REDIS_SENTINEL_NODES/MASTER` | 空/mymaster | 设置后走哨兵高可用模式 |
 | `RABBITMQ_HOST/PORT/USER/PASSWORD/VHOST` | localhost/5672/guest/guest// | RabbitMQ 连接 |
 | `DIANPING_UPLOAD_PATH` | ./uploads | 图片上传目录 |
+| `DIANPING_CANAL_ENABLED` | true | 是否启用 Canal 缓存同步监听 |
+| `CANAL_HOST/PORT` | localhost/11111 | Canal Server 地址 |
 
 > 密码类信息均不提供默认值，启动前请通过环境变量注入（如 `export MYSQL_PASSWORD=xxx`），或创建 `application-local.yml` 覆盖。
 
@@ -92,7 +121,7 @@ src/main/java/com/dianping
 ├── config/         # MVC/Redisson/MQ/Caffeine 配置
 ├── controller/     # REST 入口
 ├── service/impl/   # 业务实现（含 Shop 多级缓存、Voucher + VoucherOrder 秒杀）
-├── mq/             # RabbitMQ 消费者
+├── mq/             # RabbitMQ 消费者 + Canal binlog 缓存同步监听
 ├── utils/          # RedisConstants / CacheClient（封装穿透/击穿方案）/ RedisIdWorker
 └── DianPingApplication.java
 
@@ -103,5 +132,8 @@ frontend/           # 前端静态页（HTML + Vue2 + Element UI + axios）
 └── imgs/           # 图片资源
 
 deploy/
-└── nginx.conf      # 前端托管 + /api 反向代理配置
+├── nginx.conf      # 前端托管 + /api 反向代理配置
+├── redis/          # Redis 主从 + 哨兵配置与启停脚本
+├── canal/          # Canal Server 配置与启停脚本
+└── 高可用与一致性演进方案.md
 ```

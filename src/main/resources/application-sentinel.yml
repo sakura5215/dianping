@@ -1,0 +1,8 @@
+# 哨兵高可用 profile（激活方式：--spring.profiles.active=sentinel）
+# 激活后 Lettuce 走哨兵自动发现主节点，主从切换对应用透明
+spring:
+  data:
+    redis:
+      sentinel:
+        master: ${REDIS_SENTINEL_MASTER:mymaster}
+        nodes: ${REDIS_SENTINEL_NODES:localhost:26379,localhost:26380,localhost:26381}

@@ -42,6 +42,11 @@ logs/
 ### 运行期生成 ###
 /uploads/
 
+### Redis 运行时产物 ###
+deploy/redis/**/*.aof
+deploy/redis/**/appendonly.aof
+deploy/redis/**/dump.rdb
+
 ### 本地敏感配置（本机密码等，勿提交） ###
 application-local.yml
 application-local.yaml

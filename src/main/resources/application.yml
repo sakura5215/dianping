@@ -10,6 +10,9 @@ spring:
     password: ${MYSQL_PASSWORD:}
   data:
     redis:
+      # 单机模式（默认）：localhost:6379
+      # 高可用模式：激活 sentinel profile（--spring.profiles.active=sentinel），
+      # 哨兵节点配在 application-sentinel.yml，自动发现主节点
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       lettuce:
@@ -45,3 +48,8 @@ logging:
 dianping:
   upload:
     path: ${DIANPING_UPLOAD_PATH:./uploads}
+  # Canal binlog 订阅（缓存一致性）
+  canal:
+    enabled: ${DIANPING_CANAL_ENABLED:true}
+    host: ${CANAL_HOST:localhost}
+    port: ${CANAL_PORT:11111}
