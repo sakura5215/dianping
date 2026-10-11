@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -28,8 +29,13 @@ public class CacheClient {
     public CacheClient(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
+
     public void set(String key, Object value, Long time, TimeUnit unit){
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(value), time, unit);
+        // TTL 加随机偏移防雪崩：批量写入的 key 错开过期时间，避免同时失效瞬间打垮 DB
+        // 偏移量取基准时长的 0~10%
+        long baseSeconds = unit.toSeconds(time);
+        long jitter = ThreadLocalRandom.current().nextLong(baseSeconds / 10 + 1);
+        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(value), baseSeconds + jitter, TimeUnit.SECONDS);
     }
 
     // 逻辑过期
